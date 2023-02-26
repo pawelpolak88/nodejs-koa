@@ -1,0 +1,28 @@
+{
+  "name": "nodejs-koa",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pawelpolak88/nodejs-koa.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pawelpolak88/nodejs-koa/issues"
+  },
+  "homepage": "https://github.com/pawelpolak88/nodejs-koa#readme",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "koa": "^2.14.1",
+    "koa-bodyparser": "^4.3.0",
+    "koa-router": "^12.0.0",
+    "koa-static": "^5.0.0",
+    "nodemon": "^2.0.20"
+  }
+}
