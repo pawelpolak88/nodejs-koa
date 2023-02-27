@@ -1,66 +1,92 @@
 import * as dotenv from "dotenv";
 import Koa from "koa";
-import bodyParser from 'koa-bodyparser';
 import Router from "koa-router";
+import bodyparser from "koa-bodyparser";
+import User from "./model/User.js";
+import mongoose from "mongoose";
 
 dotenv.config();
-const PORT = process.env.PORT
+const PORT = process.env.PORT;
 
 const app = new Koa();
-const router = new Router()
+app.use(bodyparser());
 
-app.use(bodyParser())
+const router = new Router({ prefix: "/users" });
 
+async function handleValidationError(ctx, next) {
+  try {
+    await next();
+  } catch (error) {
+    if (error.name !== "ValidationError") throw error;
 
-// middleware for time spent
-async function logger(ctx, next) {
-    const start_time = Date.now();
-
-    await next()
-
-    console.log('request:', ctx.method, ctx.url, 'time spent:', Date.now() - start_time, 'ms');
+    ctx.status = 400;
+    ctx.body = Object.keys(error.errors).reduce(
+      (acc, val) => ({
+        ...acc,
+        [val]: error.errors[val].message,
+      }),
+      {}
+    );
+  }
 }
 
-app.use(logger)
+function handleIternalObjectId(ctx, next) {
+  if (!mongoose.isValidObjectId(ctx.params.id)) {
+    ctx.throw(404, "user not found");
+  }
 
-router.get('/', async (ctx, next) => {
-    // custom delay
-    await new Promise((resolve) => {
-        setTimeout(resolve, 1000)
-    })
+  return next();
+}
 
-    ctx.body = {foo: 'Hello koa'};
-})
+// get user
+router.get("/:id", handleIternalObjectId, async (ctx, next) => {
+  // ctx.params.id
 
-app.use(async (ctx, next) => {
-    await next()
+  const user = await User.findById(ctx.params.id);
 
-    if (ctx.status === 404 && ctx.body === undefined) {
-        ctx.status = 404;
-        ctx.body = 'unknown route'
-    }
-})
+  if (!user) {
+    ctx.throw(404, "no user");
+  } else {
+    ctx.body = user;
+  }
+});
 
-// get user response
-// app.use(async (ctx, next) => {
-//     const body = []
-//
-//     for await (const chunk of ctx.req) {
-//         body.push(chunk)
-//     }
-//
-//     ctx.body = JSON.parse(Buffer.concat(body).toString('utf-8'))
-//
-//     return next()
-// })
+// edit user
+router.put(
+  "/:id",
+  handleIternalObjectId,
+  handleValidationError,
+  async (ctx, next) => {
+    const user = await User.findByIdAndUpdate(
+      ctx.params.id,
+      {
+        email: ctx.request.body.email,
+        name: ctx.request.body.name,
+      },
+      {
+        returnDocument: "after",
+        runValidators: true,
+      }
+    );
 
-router.post('/sum', async (ctx, next) => {
-    ctx.body = ctx.request.body.a + ctx.request.body.b
-})
+    ctx.body = user;
+  }
+);
 
-router.post('/mul', async (ctx, next) => {
-    ctx.body = ctx.request.body.a * ctx.request.body.b
-})
+// create user
+router.post(
+  "/",
+  handleIternalObjectId,
+  handleValidationError,
+  async (ctx, next) => {
+    const user = await User.create({
+      email: ctx.request.body.email,
+      name: ctx.request.body.name,
+    });
 
-app.use(router.routes()) // async (ctx, next)
+    ctx.body = user;
+  }
+);
+
+app.use(router.routes()); // async (ctx, next)
 app.listen(PORT || 3001);
